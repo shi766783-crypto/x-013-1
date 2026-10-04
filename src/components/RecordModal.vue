@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
-import { activityTypes, normalRanges, todayISO } from '../data'
+import { activityTypes, todayISO } from '../data'
 
 const props = defineProps({ visible: Boolean, type: { type: String, default: 'health' }, pets: { type: Array, default: () => [] } })
 const emit = defineEmits(['close', 'submit'])

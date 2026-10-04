@@ -1,10 +1,8 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { normalRanges } from '../data'
+import { nextTick, onMounted, ref, watch } from 'vue'
 
-const props = defineProps({ records: { type: Array, default: () => [] }, type: { type: String, default: 'weight' } })
+const props = defineProps({ records: { type: Array, default: () => [] }, range: { type: Object, required: true } })
 const canvas = ref(null)
-const range = computed(() => normalRanges[props.type])
 
 function draw() {
   const element = canvas.value
@@ -26,12 +24,12 @@ function draw() {
   })
   if (!props.records.length) return
   const values = props.records.map((item) => Number(item.value))
-  const min = Math.min(...values, range.value.min) - (range.value.max - range.value.min) * 0.2
-  const max = Math.max(...values, range.value.max) + (range.value.max - range.value.min) * 0.2
+  const min = Math.min(...values, props.range.min) - (props.range.max - props.range.min) * 0.2
+  const max = Math.max(...values, props.range.max) + (props.range.max - props.range.min) * 0.2
   const x = (index) => props.records.length === 1 ? width / 2 : (index / (props.records.length - 1)) * (width - 24) + 12
   const y = (value) => height - ((value - min) / (max - min)) * (height - 24) - 12
   ctx.fillStyle = '#f0f7dd'
-  ctx.fillRect(0, Math.max(0, y(range.value.max)), width, Math.max(0, y(range.value.min) - y(range.value.max)))
+  ctx.fillRect(0, Math.max(0, y(props.range.max)), width, Math.max(0, y(props.range.min) - y(props.range.max)))
   ctx.beginPath()
   props.records.forEach((item, index) => index ? ctx.lineTo(x(index), y(item.value)) : ctx.moveTo(x(index), y(item.value)))
   ctx.strokeStyle = '#b5cf3e'
@@ -41,11 +39,11 @@ function draw() {
     ctx.beginPath(); ctx.arc(x(index), y(item.value), 4, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = '#87a52f'; ctx.lineWidth = 2; ctx.stroke()
   })
   ctx.fillStyle = '#8b9686'
-  ctx.fillText(`${range.value.max}`, 6, Math.max(12, y(range.value.max) - 6))
-  ctx.fillText(`${range.value.min}`, 6, Math.min(height - 4, y(range.value.min) + 13))
+  ctx.fillText(`${props.range.max}`, 6, Math.max(12, y(props.range.max) - 6))
+  ctx.fillText(`${props.range.min}`, 6, Math.min(height - 4, y(props.range.min) + 13))
 }
 
-watch(() => [props.records, props.type], () => nextTick(draw), { deep: true })
+watch(() => [props.records, props.range], () => nextTick(draw), { deep: true })
 onMounted(() => { draw(); window.addEventListener('resize', draw) })
 </script>
 

@@ -1,5 +1,5 @@
 import { computed, reactive, watch } from 'vue'
-import { achievementDefinitions, createDemoState, daysFromToday, isThisWeek, normalRanges, todayISO, uid } from '../data'
+import { achievementDefinitions, createDemoState, daysFromToday, isInNormalRange, isThisWeek, todayISO, uid } from '../data'
 
 const STORAGE_KEY = 'petcare-home-state'
 const saved = localStorage.getItem(STORAGE_KEY)
@@ -20,10 +20,12 @@ export function usePetStore() {
     const count = fields.filter((type) => state.healthRecords.some((item) => item.petId === petId && item.type === type)).length
     return Math.round((count / fields.length) * 100)
   }
-  const weightCompliance = (petId) => {
-    const records = state.healthRecords.filter((item) => item.petId === petId && item.type === 'weight')
+  const healthCompliance = (petId) => {
+    const records = state.healthRecords.filter((item) => item.petId === petId)
     if (!records.length) return 0
-    return Math.round((records.filter((item) => item.value >= normalRanges.weight.min && item.value <= normalRanges.weight.max).length / records.length) * 100)
+    const pet = petById(petId)
+    const inRange = records.filter((item) => isInNormalRange(item.type, item.value, pet)).length
+    return Math.round((inRange / records.length) * 100)
   }
 
   function add(itemType, payload) {
@@ -37,5 +39,5 @@ export function usePetStore() {
     Object.keys(state).forEach((key) => { state[key].splice(0, state[key].length, ...(fresh[key] || [])) })
   }
 
-  return { state, petById, petName, totalActivity, pendingVaccines, feedingTasks, medicationsToday, achievements, healthCompleteness, weightCompliance, add, addPet, resetDemo }
+  return { state, petById, petName, totalActivity, pendingVaccines, feedingTasks, medicationsToday, achievements, healthCompleteness, healthCompliance, add, addPet, resetDemo }
 }

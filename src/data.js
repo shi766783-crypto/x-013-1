@@ -1,10 +1,73 @@
 export const speciesOptions = ['狗', '猫', '兔', '鸟', '鱼', '其他']
 export const activityTypes = ['散步', '奔跑', '玩耍']
 
+// 通用默认区间，同时提供 unit / label 元数据；查不到种类或品种时回退到这里
 export const normalRanges = {
   weight: { min: 3, max: 12, unit: 'kg', label: '体重' },
   temperature: { min: 37.5, max: 39.2, unit: '°C', label: '体温' },
   heartRate: { min: 60, max: 140, unit: 'bpm', label: '心率' },
+}
+
+// 按种类的参考区间，只需列出与默认不同的指标
+export const speciesRanges = {
+  狗: {
+    weight: { min: 2, max: 30 },
+    temperature: { min: 37.5, max: 39 },
+    heartRate: { min: 60, max: 140 },
+  },
+  猫: {
+    weight: { min: 2.5, max: 6.5 },
+    temperature: { min: 38, max: 39.2 },
+    heartRate: { min: 140, max: 220 },
+  },
+  兔: {
+    weight: { min: 1.2, max: 3.5 },
+    temperature: { min: 38.5, max: 40 },
+    heartRate: { min: 180, max: 250 },
+  },
+  鸟: {
+    weight: { min: 0.03, max: 1 },
+    temperature: { min: 40, max: 42.5 },
+    heartRate: { min: 200, max: 400 },
+  },
+  鱼: {
+    weight: { min: 0.05, max: 2 },
+    temperature: { min: 18, max: 28 },
+    heartRate: { min: 40, max: 120 },
+  },
+}
+
+// 按品种的进一步覆盖，优先级高于种类；未列出的指标沿用种类区间
+export const breedRanges = {
+  柴犬: { weight: { min: 8, max: 11 } },
+  金毛寻回犬: { weight: { min: 25, max: 34 } },
+  拉布拉多: { weight: { min: 25, max: 36 } },
+  泰迪: { weight: { min: 3, max: 6 } },
+  英国短毛猫: { weight: { min: 4, max: 8 } },
+  布偶猫: { weight: { min: 4.5, max: 9 } },
+  加菲猫: { weight: { min: 3.5, max: 7 } },
+}
+
+function findBreedOverride(breed, metric) {
+  const name = String(breed || '').trim()
+  if (!name) return null
+  const key = Object.keys(breedRanges).find((item) => item === name)
+    || Object.keys(breedRanges).find((item) => name.includes(item) || item.includes(name))
+  return key ? breedRanges[key][metric] : null
+}
+
+// 参考区间一律在查询时按宠物当前档案计算，不回写任何历史记录
+export function getNormalRange(metric, pet) {
+  const base = normalRanges[metric] || { min: 0, max: 0, unit: '', label: metric }
+  const speciesRange = pet?.species ? speciesRanges[pet.species]?.[metric] : null
+  const breedRange = findBreedOverride(pet?.breed, metric)
+  return { ...base, ...(speciesRange || {}), ...(breedRange || {}) }
+}
+
+export function isInNormalRange(metric, value, pet) {
+  const range = getNormalRange(metric, pet)
+  const number = Number(value)
+  return Number.isFinite(number) && number >= range.min && number <= range.max
 }
 
 export const achievementDefinitions = [
