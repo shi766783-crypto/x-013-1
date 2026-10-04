@@ -1,11 +1,13 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
-import { activityTypes, normalRanges, todayISO } from '../data'
+import { activityTypes, getMetricRange, metricMeta, todayISO } from '../data'
 
 const props = defineProps({ visible: Boolean, type: { type: String, default: 'health' }, pets: { type: Array, default: () => [] } })
 const emit = defineEmits(['close', 'submit'])
 const title = computed(() => ({ health: '记录健康指标', vaccine: '添加疫苗计划', medication: '添加用药计划', feeding: '设置喂食计划', activity: '记录一次活动' }[props.type]))
+const selectedPet = computed(() => props.pets.find((pet) => pet.id === form.value.petId) || null)
+const selectedRange = computed(() => getMetricRange(selectedPet.value, form.value.type))
 const form = ref({})
 const defaults = {
   health: () => ({ petId: props.pets[0]?.id || '', type: 'weight', date: todayISO(), value: '' }),
@@ -34,8 +36,8 @@ watch(() => props.pets.length, reset)
       <form class="form-grid single-column" @submit.prevent="submit">
         <label>关联宠物<select v-model="form.petId"><option v-for="pet in pets" :key="pet.id" :value="pet.id">{{ pet.name }}</option></select></label>
         <template v-if="type === 'health'">
-          <label>指标类型<select v-model="form.type"><option value="weight">体重（kg）</option><option value="temperature">体温（°C）</option><option value="heartRate">心率（bpm）</option></select></label>
-          <label>测量日期<input v-model="form.date" type="date" required /></label><label>数值<input v-model="form.value" type="number" step="0.1" required placeholder="输入数值" /></label>
+          <label>指标类型<select v-model="form.type"><option v-for="(meta, key) in metricMeta" :key="key" :value="key">{{ meta.label }}（{{ meta.unit }}）</option></select></label>
+          <label>测量日期<input v-model="form.date" type="date" required /></label><label>数值（{{ metricMeta[form.type]?.unit }}）<input v-model="form.value" type="number" step="0.1" required placeholder="输入数值" /><small v-if="selectedRange" class="range-hint">{{ selectedPet?.breed || selectedPet?.species }}参考区间：{{ selectedRange.min }} - {{ selectedRange.max }} {{ selectedRange.unit }}</small><small v-else class="range-hint muted-hint">{{ selectedPet?.species || '该宠物' }}暂无{{ metricMeta[form.type]?.label }}参考区间</small></label>
         </template>
         <template v-else-if="type === 'vaccine'">
           <label>记录类型<select v-model="form.category"><option>疫苗</option><option>驱虫</option></select></label><label>{{ form.category === '驱虫' ? '驱虫名称' : '疫苗名称' }}<input v-model="form.name" required :placeholder="form.category === '驱虫' ? '例如：体内驱虫' : '例如：猫三联'" /></label><div class="two-fields"><label>接种日期<input v-model="form.date" type="date" required /></label><label>下次接种<input v-model="form.nextDate" type="date" required /></label></div><label>医院名称<input v-model="form.hospital" placeholder="选填" /></label><label>备注<textarea v-model="form.notes" rows="2"></textarea></label>

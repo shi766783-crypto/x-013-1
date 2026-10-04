@@ -1,5 +1,5 @@
 import { computed, reactive, watch } from 'vue'
-import { achievementDefinitions, createDemoState, daysFromToday, isThisWeek, normalRanges, todayISO, uid } from '../data'
+import { achievementDefinitions, createDemoState, daysFromToday, getMetricRange, isThisWeek, isValueInRange, todayISO, uid } from '../data'
 
 const STORAGE_KEY = 'petcare-home-state'
 const saved = localStorage.getItem(STORAGE_KEY)
@@ -20,10 +20,16 @@ export function usePetStore() {
     const count = fields.filter((type) => state.healthRecords.some((item) => item.petId === petId && item.type === type)).length
     return Math.round((count / fields.length) * 100)
   }
-  const weightCompliance = (petId) => {
-    const records = state.healthRecords.filter((item) => item.petId === petId && item.type === 'weight')
-    if (!records.length) return 0
-    return Math.round((records.filter((item) => item.value >= normalRanges.weight.min && item.value <= normalRanges.weight.max).length / records.length) * 100)
+  // 健康达标率：用这只宠物当前种类/品种的参考区间，逐条判断历史记录。
+  // 区间是判断时现算的，因此区间变化不会改动任何已保存记录。
+  // 该种类没有参考区间的指标（如鱼的体温）不参与统计；无任何可评估记录时返回 null。
+  const healthCompliance = (petId) => {
+    const pet = petById(petId)
+    const records = state.healthRecords.filter((item) => item.petId === petId)
+    const evaluable = records.filter((item) => getMetricRange(pet, item.type))
+    if (!evaluable.length) return null
+    const passed = evaluable.filter((item) => isValueInRange(item.value, getMetricRange(pet, item.type))).length
+    return Math.round((passed / evaluable.length) * 100)
   }
 
   function add(itemType, payload) {
@@ -37,5 +43,5 @@ export function usePetStore() {
     Object.keys(state).forEach((key) => { state[key].splice(0, state[key].length, ...(fresh[key] || [])) })
   }
 
-  return { state, petById, petName, totalActivity, pendingVaccines, feedingTasks, medicationsToday, achievements, healthCompleteness, weightCompliance, add, addPet, resetDemo }
+  return { state, petById, petName, totalActivity, pendingVaccines, feedingTasks, medicationsToday, achievements, healthCompleteness, healthCompliance, add, addPet, resetDemo }
 }

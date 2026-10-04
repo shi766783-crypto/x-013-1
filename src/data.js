@@ -1,10 +1,104 @@
 export const speciesOptions = ['狗', '猫', '兔', '鸟', '鱼', '其他']
 export const activityTypes = ['散步', '奔跑', '玩耍']
 
-export const normalRanges = {
-  weight: { min: 3, max: 12, unit: 'kg', label: '体重' },
-  temperature: { min: 37.5, max: 39.2, unit: '°C', label: '体温' },
-  heartRate: { min: 60, max: 140, unit: 'bpm', label: '心率' },
+export const metricMeta = {
+  weight: { unit: 'kg', label: '体重' },
+  temperature: { unit: '°C', label: '体温' },
+  heartRate: { unit: 'bpm', label: '心率' },
+}
+
+// 参考区间按「种类 -> 品种」两级配置：
+// 先匹配该种类下的品种覆盖区间，匹配不到再回退到种类通用区间。
+// min/max 为 null 表示该种类暂无此项指标的参考区间（如鱼类不测量体温、心率）。
+// 注意：区间只用于展示与判断，历史健康记录始终保存原始数值，区间调整不会改写旧数据。
+export const speciesRanges = {
+  狗: {
+    weight: { min: 3, max: 30 },
+    temperature: { min: 37.5, max: 39.2 },
+    heartRate: { min: 60, max: 140 },
+    breeds: {
+      吉娃娃: { weight: { min: 1.5, max: 3 } },
+      泰迪: { weight: { min: 2, max: 4 } },
+      贵宾: { weight: { min: 2, max: 8 } },
+      比熊: { weight: { min: 3, max: 6 } },
+      柯基: { weight: { min: 9, max: 14 } },
+      柴犬: { weight: { min: 7, max: 11 } },
+      边境牧羊犬: { weight: { min: 12, max: 20 } },
+      金毛: { weight: { min: 25, max: 34 } },
+      拉布拉多: { weight: { min: 25, max: 36 } },
+      哈士奇: { weight: { min: 16, max: 27 } },
+      阿拉斯加: { weight: { min: 32, max: 45 } },
+      藏獒: { weight: { min: 40, max: 70 } },
+    },
+  },
+  猫: {
+    weight: { min: 3, max: 6 },
+    temperature: { min: 38, max: 39.5 },
+    heartRate: { min: 120, max: 180 },
+    breeds: {
+      英国短毛猫: { weight: { min: 4, max: 8 } },
+      美国短毛猫: { weight: { min: 3, max: 7 } },
+      布偶猫: { weight: { min: 4.5, max: 9 } },
+      缅因猫: { weight: { min: 5, max: 11 } },
+      暹罗猫: { weight: { min: 2.5, max: 5 } },
+      橘猫: { weight: { min: 3.5, max: 7 } },
+      狸花猫: { weight: { min: 3, max: 6 } },
+    },
+  },
+  兔: {
+    weight: { min: 1, max: 5 },
+    temperature: { min: 38.5, max: 40 },
+    heartRate: { min: 130, max: 325 },
+  },
+  鸟: {
+    weight: { min: 0.03, max: 1.5 },
+    temperature: { min: 40, max: 42.5 },
+    heartRate: { min: 200, max: 500 },
+    breeds: {
+      虎皮鹦鹉: { weight: { min: 0.03, max: 0.05 } },
+      玄凤鹦鹉: { weight: { min: 0.07, max: 0.12 } },
+      八哥: { weight: { min: 0.1, max: 0.18 } },
+      金丝雀: { weight: { min: 0.015, max: 0.03 } },
+    },
+  },
+  鱼: {
+    weight: { min: 0.01, max: 3 },
+    temperature: null,
+    heartRate: null,
+  },
+  其他: {
+    weight: null,
+    temperature: null,
+    heartRate: null,
+  },
+}
+
+function breedOverride(pet, type) {
+  const config = speciesRanges[pet?.species]
+  if (!config?.breeds || !pet?.breed) return null
+  const breeds = config.breeds
+  const exact = breeds[pet.breed.trim()]
+  if (exact?.[type]) return exact[type]
+  const fuzzyKey = Object.keys(breeds).find((name) => pet.breed.includes(name) || name.includes(pet.breed.trim()))
+  return fuzzyKey ? breeds[fuzzyKey][type] || null : null
+}
+
+// 返回某只宠物某项指标当前的参考区间 { min, max }，无参考时返回 null。
+export function getMetricRange(pet, type) {
+  const config = speciesRanges[pet?.species]
+  if (!config) return null
+  const override = breedOverride(pet, type)
+  const range = override || config[type]
+  if (!range || range.min == null || range.max == null) return null
+  return { ...range, unit: metricMeta[type]?.unit, label: metricMeta[type]?.label }
+}
+
+// 参考区间为空时不做正常/异常判断，统一视为无法评估。
+export function isValueInRange(value, range) {
+  if (!range) return null
+  const number = Number(value)
+  if (Number.isNaN(number)) return null
+  return number >= range.min && number <= range.max
 }
 
 export const achievementDefinitions = [
